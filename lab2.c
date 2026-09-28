@@ -1,0 +1,51 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#define _POSIX_C_SOURCE 200809L
+int main(void) {
+  char *line = NULL;
+  size_t n = 0;
+
+  while (1) {
+    printf("Enter programs to run.\n> ");
+
+    ssize_t len = getline(&line, &n, stdin);
+
+    if (len == -1) {
+      perror("Failed to read line\n");
+      break;
+    }
+
+    if (len > 0 && line[len - 1] == '\n') {
+      line[len - 1] = '\0';
+    }
+
+    pid_t cpid = fork();
+
+    if (cpid < 0) {
+      perror("fork failed!\n");
+      continue;
+    } else if (cpid > 0) {
+      int status = 0;
+      if (waitpid(cpid, &status, 0) == -1) {
+        perror("waitpid failed!\n");
+        exit(EXIT_FAILURE);
+      }
+
+      if (WIFEXITED(status)) {
+        printf("Child exited.\n");
+      }
+
+    } else {
+      if (execlp(line, line, (char *)NULL) == -1) {
+        perror("execution of child process failed!\n");
+        free(line);
+        exit(EXIT_FAILURE);
+      }
+    }
+  }
+
+  free(line);
+  return 0;
+}
